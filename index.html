@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Flores Timur</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <!-- Leaflet Search CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-search@3.0.2/dist/leaflet-search.min.css" />
+
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body { display: flex; flex-direction: column; }
+        #map { flex-grow: 1; width: 100%; }
+        
+        .legend {
+            padding: 0;
+            font: 14px/16px Arial, Helvetica, sans-serif;
+            background: white;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            overflow: hidden; /* Ensures the gradient in the header respects the border radius */
+        }
+        .legend .legend-title { font-weight: bold; margin-bottom: 8px; display: block; }
+        .legend .legend-item { display: flex; align-items: center; margin-bottom: 4px; }
+        .legend i { width: 18px; height: 18px; margin-right: 8px; opacity: 0.9; border: 1px solid #555; }
+        .legend .line-symbol { border: 0; border-bottom-style: solid; height: 10px; background: none !important; }
+        
+        .modal-header { padding: 0.8rem 1rem; }
+        .modal-body { padding: 1rem; }
+        
+        #legend-header {
+            cursor: pointer;
+            padding: 8px 12px;
+            color: white;
+            background: #4361ee; /* Fallback */
+            background: linear-gradient(to right, #4361ee, #7209b7);
+        }
+        #legend-content-container {
+            padding: 8px 12px 10px 12px;
+            background: rgba(255,255,255,0.9);
+        }
+
+        .bg-custom-gradient {
+            background: #4361ee;
+            background: linear-gradient(to right, #4361ee, #7209b7);
+        }
+
+        /* Responsive Legend */
+        #legend-content-container {
+            display: none; /* Hidden by default */
+        }
+        @media (min-width: 768px) {
+            #legend-content-container {
+                display: block; /* Visible on desktop */
+            }
+        }
+
+        .toponimi-icon {
+            font-size: 1.5rem;
+            background: linear-gradient(to right, #4361ee, #7209b7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Info Modal Structure -->
+    <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-custom-gradient text-white">
+            <h1 class="modal-title fs-5" id="infoModalLabel"></h1>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="infoModalBody"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- About Modal Structure -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header bg-custom-gradient text-white">
+            <h1 class="modal-title fs-5" id="aboutModalLabel"><i class="bi bi-info-circle-fill me-2"></i>Tentang Aplikasi</h1>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="text-center mb-4">
+                <h5 class="mb-3">Peta Interaktif Flores Timur</h5>
+                <p class="text-muted">Aplikasi peta web ini menyajikan data geografis Kabupaten Flores Timur secara interaktif. Dibuat sebagai bagian dari proyek studi menggunakan Leaflet.js dan Bootstrap.</p>
+            </div>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h6 class="card-title text-center mb-3">Pengembang</h6>
+                    <p class="card-text mb-1"><strong>Nama:</strong> Dwiky Surya Abdilah</p>
+                    <p class="card-text mb-1"><strong>NIM:</strong> 24/537664/SV/24444</p>
+                    <p class="card-text"><strong>Kelas:</strong> A</p>
+                </div>
+            </div>
+            
+            <div>
+                <h6 class="mb-3">Fitur Utama</h6>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><i class="bi bi-map-fill me-2 text-primary"></i>Peta Dasar (OpenStreetMap & Esri Imagery)</li>
+                    <li class="list-group-item"><i class="bi bi-bounding-box me-2 text-success"></i>Layer Batas Wilayah (Kecamatan)</li>
+                    <li class="list-group-item"><i class="bi bi-search-heart me-2 text-info"></i>Pencarian Kecamatan</li>
+                    <li class="list-group-item"><i class="bi bi-card-text me-2 text-warning"></i>Informasi Detail & Tooltip</li>
+                    <li class="list-group-item"><i class="bi bi-palette-fill me-2 text-danger"></i>Legenda Interaktif & Responsif</li>
+                </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-custom-gradient">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Flores Timur</span>
+            <span class="navbar-text">
+                <a href="#" class="text-white" data-bs-toggle="modal" data-bs-target="#aboutModal">
+                    <i class="bi bi-info-circle me-1"></i> Tentang
+                </a>
+            </span>
+        </div>
+    </nav>
+
+    <!-- Map Container -->
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-search@3.0.2/dist/leaflet-search.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Map Initialization Script -->
+    <script>
+        const floresTimurCoords = [-8.342, 122.981];
+        const mapZoom = 11;
+
+        const osmBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
+        const esriImageryBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri &mdash; Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community' });
+
+        const map = L.map('map', { center: floresTimurCoords, zoom: mapZoom, layers: [osmBasemap] });
+
+        map.createPane('sungaiPane'); map.getPane('sungaiPane').style.zIndex = 410;
+        map.createPane('jalanPane'); map.getPane('jalanPane').style.zIndex = 420;
+        map.createPane('toponimiPane'); map.getPane('toponimiPane').style.zIndex = 430;
+
+        function getColor(p) { return p > 30000 ? '#8c510a' : p > 15000 ? '#bf812d' : '#f6e8c3'; }
+        function styleKecamatan(feature) { return { fillColor: getColor(feature.properties.Penduduk), weight: 1.5, opacity: 1, color: 'white', dashArray: '3', fillOpacity: 0.7 }; }
+        function styleJalan(feature) { let style = { color: 'red', opacity: 0.9 }; switch (feature.properties.NAMA_UNSUR) { case 'Jalan Propinsi': style.weight = 4; break; case 'Jalan Kabupaten': style.weight = 2.5; break; default: style.weight = 1; break; } return style; }
+        
+        const toponimiIcon = L.divIcon({
+            html: '<i class="bi bi-geo-alt-fill toponimi-icon"></i>',
+            className: '' // an empty class name so leaflet doesn't add any default styling to the icon
+        });
+
+        async function createGeoJsonLayer(url, options) { const response = await fetch(url); if (!response.ok) throw new Error(`Gagal memuat: ${url}`); const data = await response.json(); return L.geoJSON(data, options); }
+
+        Promise.all([
+            createGeoJsonLayer('data/batas_kecamatan.geojson', { style: styleKecamatan }),
+            createGeoJsonLayer('data/sungai.geojson', { pane: 'sungaiPane', style: { color: 'blue', weight: 2 } }),
+            createGeoJsonLayer('data/jalan.geojson', { pane: 'jalanPane', style: styleJalan, onEachFeature: (feature, layer) => { if(feature.properties.NAMA_UNSUR) layer.bindPopup(feature.properties.NAMA_UNSUR)} }),
+            createGeoJsonLayer('data/toponimi.geojson', { pane: 'toponimiPane', pointToLayer: (feature, latlng) => L.marker(latlng, {icon: toponimiIcon}), onEachFeature: (feature, layer) => { if(feature.properties.TOPONIMI) layer.bindPopup(feature.properties.TOPONIMI)} })
+        ]).then(([kecamatanLayer, sungaiLayer, jalanLayer, toponimiLayer]) => {
+            
+            function highlightFeature(e) { e.target.setStyle({ weight: 3, color: '#666', dashArray: '', fillOpacity: 0.9 }).bringToFront(); }
+            function resetHighlight(e) { kecamatanLayer.resetStyle(e.target); }
+
+            const infoModal = new bootstrap.Modal(document.getElementById('infoModal'));
+            kecamatanLayer.eachLayer(layer => {
+                const props = layer.feature.properties;
+                if (props && props.WADMKC) layer.bindTooltip(props.WADMKC, { sticky: true });
+                layer.on({ mouseover: highlightFeature, mouseout: resetHighlight, click: () => { document.getElementById('infoModalLabel').innerHTML = `<i class="bi bi-geo-alt-fill me-2"></i>Kecamatan ${props.WADMKC}`; document.getElementById('infoModalBody').innerHTML = `<ul class="list-group list-group-flush"><li class="list-group-item d-flex justify-content-between align-items-center"><span><i class="bi bi-people-fill me-2"></i>Jumlah Penduduk</span><span class="badge bg-primary rounded-pill">${props.Penduduk.toLocaleString()}</span></li><li class="list-group-item text-center text-muted pt-2 pb-2"><small>${props.WADMKK}, ${props.WADMPR}</small></li></ul>`; infoModal.show(); } });
+            });
+
+            const baseMaps = { "OpenStreetMap": osmBasemap, "Citra Satelit Esri": esriImageryBasemap };
+            const overlayMaps = { "Batas Kecamatan": kecamatanLayer, "Toponimi": toponimiLayer, "Jalan": jalanLayer, "Sungai": sungaiLayer };
+
+            L.control.layers(baseMaps, overlayMaps, { 
+                position: 'topright',
+                collapsed: true
+            }).addTo(map);
+            kecamatanLayer.addTo(map);
+
+            var searchControl = new L.Control.Search({
+                layer: kecamatanLayer,
+                propertyName: 'WADMKC',
+                marker: false,
+                moveToLocation: function(latlng, title, map) {
+                    var zoom = map.getBoundsZoom(latlng.layer.getBounds());
+                    map.setView(latlng, zoom); // set the view
+                }
+            });
+
+            searchControl.on('search:locationfound', function(e) {
+                
+                e.layer.setStyle({fillColor: '#3f0', color: '#0f0'});
+                if(e.layer._popup) e.layer.openPopup();
+
+            }).on('search:collapsed', function(e) {
+
+                kecamatanLayer.eachLayer(function(layer) {    //restore feature color
+                    kecamatanLayer.resetStyle(layer);
+                });
+            });
+            
+            map.addControl( searchControl );  //inizialize search control
+
+        }).catch(error => console.error("Gagal memuat satu atau lebih layer:", error));
+
+        const legend = L.control({position: 'bottomright'});
+        legend.onAdd = function (map) {
+            const div = L.DomUtil.create('div', 'info legend');
+            
+            const header = L.DomUtil.create('div', '', div);
+            header.id = 'legend-header';
+            header.innerHTML = '<strong>Legenda <i class="bi bi-caret-down-fill"></i></strong>';
+
+            const container = L.DomUtil.create('div', '', div);
+            container.id = 'legend-content-container';
+
+            let pendudukHTML = '<span class="legend-title">Jumlah Penduduk</span>';
+            const grades = [0, 15000, 30000];
+            for (let i = 0; i < grades.length; i++) { pendudukHTML += `<div class="legend-item"><i style="background:${getColor(grades[i] + 1)}"></i> ${grades[i].toLocaleString()}${grades[i+1] ? '&ndash;' + grades[i+1].toLocaleString() : '+'}</div>`; }
+
+            let jalanHTML = '<hr style="margin: 5px 0;"><span class="legend-title">Tipe Jalan</span>';
+            const types = { 'Jalan Propinsi': 4, 'Jalan Kabupaten': 2.5, 'Jalan Lain': 1 };
+            for (const type in types) { jalanHTML += `<div class="legend-item"><i class="line-symbol" style="border-bottom-color: red; border-bottom-width: ${types[type]}px;"></i> ${type}</div>`; }
+
+            let sungaiHTML = '<hr style="margin: 5px 0;"><span class="legend-title">Hidrografi</span>';
+            sungaiHTML += `<div class="legend-item"><i class="line-symbol" style="border-bottom-color: blue; border-bottom-width: 2px;"></i> Sungai</div>`;
+
+            container.innerHTML = pendudukHTML + jalanHTML + sungaiHTML;
+
+            L.DomEvent.on(header, 'click', function() {
+                container.style.display = (container.style.display === 'none' || container.style.display === '') ? 'block' : 'none';
+            });
+            return div;
+        };
+        legend.addTo(map);
+
+    </script>
+</body>
+</html>
